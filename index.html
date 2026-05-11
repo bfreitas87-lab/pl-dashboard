@@ -420,7 +420,22 @@ function boardObjFromSections(ag, sections){return sumObjs(sections.map(n=>ag.se
 function boardCompareValue(o){o=o||zero();return BOARD_MODE==='sply'?o.s:o.f;}
 function boardCompareName(){return BOARD_MODE==='sply'?'SPLY':'Forecast';}
 function boardIsZeroObj(o){o=o||zero();return Math.round(o.a)===0&&Math.round(o.f)===0&&Math.round(o.s)===0&&Math.round(o.p)===0;}
-function boardRowHtml(name,o,cls){o=o||zero();if(!cls&&boardIsZeroObj(o))return '';let comp=boardCompareValue(o);let d=o.a-comp;return '<tr class="'+(cls||'')+'"><td>'+name+'</td><td>'+fmt(o.a)+'</td><td>'+fmt(comp)+'</td><td>'+fmt(d)+'</td><td>'+pct(d,comp)+'</td><td class="commentCell"><textarea class="boardComment" placeholder=""></textarea></td></tr>';}
+function escHtml(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function boardContextKey(){
+  const ids=['report','period','portfolio','legal','region','country','product_group','product','rd_included','allocated_included'];
+  const parts=ids.map(id=>{let el=document.getElementById(id);return id+'='+(el?el.value:'');});
+  parts.push('mode='+BOARD_MODE);
+  return parts.join('|');
+}
+function boardCommentKey(name){return 'plDashboard.boardComment.v1|'+boardContextKey()+'|row='+String(name||'');}
+function boardGetComment(name){try{return localStorage.getItem(boardCommentKey(name))||'';}catch(e){return ''}}
+function boardSetComment(key,value){try{localStorage.setItem(key,value||'');}catch(e){}}
+function bindBoardComments(){
+  document.querySelectorAll('#boardTable textarea.boardComment').forEach(t=>{
+    t.addEventListener('input',()=>boardSetComment(t.dataset.key,t.value));
+  });
+}
+function boardRowHtml(name,o,cls){o=o||zero();if(!cls&&boardIsZeroObj(o))return '';let comp=boardCompareValue(o);let d=o.a-comp;let key=boardCommentKey(name);let comment=boardGetComment(name);return '<tr class="'+(cls||'')+'"><td>'+name+'</td><td>'+fmt(o.a)+'</td><td>'+fmt(comp)+'</td><td>'+fmt(d)+'</td><td>'+pct(d,comp)+'</td><td class="commentCell"><textarea class="boardComment" data-key="'+escHtml(key)+'" placeholder="">'+escHtml(comment)+'</textarea></td></tr>';}
 function updateBoardModeHeader(){let h=document.getElementById('boardCompareHeader'),l=document.getElementById('boardModeLabel');if(h)h.textContent=boardCompareName();if(l)l.textContent='vs '+boardCompareName();}
 function renderBoardView(ag){updateBoardModeHeader();let tb=document.querySelector('#boardTable tbody');if(!tb)return;tb.innerHTML='';if(!DATA.records.length){tb.innerHTML='<tr><td colspan="6" style="text-align:left;color:#555;padding:14px">Carregue um arquivo para visualizar a Board View.</td></tr>';return;}let rows=[];
   let netLic=boardObjFromSections(ag,['License Revenue','License COGS']);
@@ -464,7 +479,7 @@ function renderBoardView(ag){updateBoardModeHeader();let tb=document.querySelect
   let ebita=sumObjs([netRevenue,opex]);
   rows.push(boardRowHtml('OPEX',opex,'boardTotal'));
   rows.push(boardRowHtml('Non Burdened EBITA',ebita,'boardTotal'));
-  tb.innerHTML=rows.join('');}
+  tb.innerHTML=rows.join('');bindBoardComments();}
 
 function activeViewLabel(){let active=document.querySelector('.view.active');if(!active)return 'Export';let tab=document.querySelector('.tab.active');return tab?tab.textContent.trim():(active.id||'Export');}
 function activeExportTable(){let active=document.querySelector('.view.active');if(!active)return null;return active.querySelector('table');}
